@@ -34,7 +34,7 @@
 
 Для использования приложения давайте установим его! Нажмите на зеленую кнопку Code и выберете Download ZIP.
 
-![1]([https://github.com/marklum7/kval/blob/main/foto/303944432-edd8d450-e268-403e-8c21-33c10f8228d5.png](https://media.discordapp.net/attachments/924231957708156942/1206473103723593758/image.png?ex=65dc22a3&is=65c9ada3&hm=5f6fd1cac0399c4eb499f4a5f91edcd3a6b575ceadc4b843b5c160cf426e5970&=&format=webp&quality=lossless))
+![](https://media.discordapp.net/attachments/924231957708156942/1206473103723593758/image.png?ex=65dc22a3&is=65c9ada3&hm=5f6fd1cac0399c4eb499f4a5f91edcd3a6b575ceadc4b843b5c160cf426e5970&=&format=webp&quality=lossless)
 
 После скачивания распакуйте архив в папку.
 Для запуска необходимо перетащить папку на love.exe
