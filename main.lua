@@ -1,184 +1,176 @@
--- Инициализируем переменные
-local platform
-local balls
-local blocks
-local score = 0
-local highscore = 0
-local colors = { -- Цвета блоков
-  {255, 0, 0},   -- Красный
-  {0, 255, 0},   -- Зеленый
-  {0, 0, 255},   -- Синий
-}
-local powerups = { -- Типы улучшений
-  "увеличение платформы",
-  "уменьшение платформы",
-  "увеличение скорости шарика",
-  "уменьшение скорости шарика",
-}
-
--- Загрузка игры
 function love.load()
-  love.window.setTitle("Игра блоки")
-  love.window.setMode(800, 600, { resizable = false })
-  
-  platform = {
-    x = love.graphics.getWidth()/2 - 50,  -- Начальные координаты платформы
-    y = love.graphics.getHeight() - 20,
-    width = 100,
-    height = 10,
-    speed = 500
-  }
-  
-  balls = {
-    {
-      x = love.graphics.getWidth()/2,  -- Начальные координаты шарика
-      y = love.graphics.getHeight()/2,
-      radius = 10,
-      dx = 200 + math.random(0, 50),
-      dy = -200 - math.random(0, 50)
-    }
-  }
-  
-  blocks = {}
-  local blockWidth = 60
-  local blockHeight = 20
-  local numRows = 3
-  local numCols = love.graphics.getWidth() / (blockWidth * 1.1)
-  
-  for row = 1, numRows do
-    for col = 1, numCols do
-        print(colors[row])
-      local block = {
-        x = (col-1) * (blockWidth + 5),
-        y = (row-1) * (blockHeight + 5),
-        width = blockWidth,
-        height = blockHeight,
-        color = colors[row],
-      }
-      block.powerup = (math.random(1,5) == 1) and true or false
-      table.insert(blocks, block)
-    end
-  end
+    initializeGame()
 end
 
--- Обновление
+function initializeGame()
+    -- Параметры блока
+    blockWidth = 100
+    blockHeight = 30
+    blocks = {}
+    fallingBlocks = {}
+    clouds = {}
+    score = 0
+
+    -- Первый блок в центре
+    local startX = (love.graphics.getWidth() - blockWidth) / 2
+    local startY = love.graphics.getHeight() - blockHeight
+    table.insert(blocks, {x = startX, y = startY, width = blockWidth, height = blockHeight})
+
+    -- Перемещение нового блока
+    newBlock = {x = 0, y = startY - blockHeight, width = blockWidth, height = blockHeight}
+    direction = "right"
+    speed = 200
+    gameOver = false
+
+    -- Цвет фона (небо)
+    skyColor = {0.529, 0.808, 0.922}
+
+    -- Инициализация облаков
+    for i = 1, 5 do
+        local cloud = {
+            x = love.math.random(0, love.graphics.getWidth()),
+            y = love.math.random(0, love.graphics.getHeight() / 2),
+            speed = love.math.random(20, 50),
+            width = love.math.random(50, 100),
+            height = love.math.random(20, 50)
+        }
+        table.insert(clouds, cloud)
+    end
+end
+
 function love.update(dt)
-  -- Управление платформой
-  if love.keyboard.isDown("left") then
-    platform.x = platform.x - platform.speed * dt
-  elseif love.keyboard.isDown("right") then
-    platform.x = platform.x + platform.speed * dt
-  end
-  
-  -- Обновление координат всех шариков
-  for i, ball in ipairs(balls) do
-    -- Обработка столкновения шарика с платформой
-    if ball.y + ball.radius >= platform.y and
-       ball.x + ball.radius >= platform.x and
-       ball.x - ball.radius <= platform.x + platform.width then
-      ball.dy = -ball.dy
-    end
+    if gameOver then return end
     
-    -- Обработка столкновения шарика со блоками
-    for j, block in ipairs(blocks) do
-      if ball.x + ball.radius >= block.x and
-         ball.x - ball.radius <= block.x + block.width and
-         ball.y + ball.radius >= block.y and
-         ball.y - ball.radius <= block.y + block.height then
-        table.remove(blocks, j)
-        ball.dy = -ball.dy
-        score = score + 1
-        
-        -- Появление нового шарика при получении улучшения
-        if block.powerup then
-          local newBall = {
-            x = ball.x,
-            y = ball.y,
-            radius = ball.radius,
-            dx = -ball.dx,
-            dy = -ball.dy
-          }
-          table.insert(balls, newBall)
+    -- Движение нового блока
+    if direction == "right" then
+        newBlock.x = newBlock.x + speed * dt
+        if newBlock.x + newBlock.width > love.graphics.getWidth() then
+            direction = "left"
         end
-        
-        break
-      end
+    else
+        newBlock.x = newBlock.x - speed * dt
+        if newBlock.x < 0 then
+            direction = "right"
+        end
     end
     
-    -- Обновление координат шарика
-    ball.x = ball.x + ball.dx * dt
-    ball.y = ball.y + ball.dy * dt
-    
-    -- Обработка столкновения шарика со стенками
-    if ball.x - ball.radius < 0 or ball.x + ball.radius > love.graphics.getWidth() then
-      ball.dx = -ball.dx
+    -- Обновление позиции падающих обрезков блоков
+    for i = #fallingBlocks, 1, -1 do
+        local block = fallingBlocks[i]
+        block.y = block.y + 300 * dt
+        if block.y > love.graphics.getHeight() then
+            table.remove(fallingBlocks, i)
+        end
     end
-    
-    if ball.y - ball.radius < 0 then
-      ball.dy = -ball.dy
+
+    -- Обновление позиции облаков
+    for _, cloud in ipairs(clouds) do
+        cloud.x = cloud.x + cloud.speed * dt
+        if cloud.x > love.graphics.getWidth() then
+            cloud.x = -cloud.width
+        end
     end
-    
-    -- Удаление шарика при падении
-    if ball.y + ball.radius > love.graphics.getHeight() then
-      table.remove(balls, i)
-      
-      if #balls == 0 then
-        gameover = true
-        highscore = math.max(highscore, score)
-      end
-    end
-  end
-end
-
--- Перерисовка экрана
-function love.draw()
-  -- Отрисовка платформы
-  love.graphics.rectangle("fill", platform.x, platform.y, platform.width, platform.height)
-  
-  -- Отрисовка блоков
-  for i, block in ipairs(blocks) do
-    love.graphics.setColor(block.color)
-    love.graphics.rectangle("fill", block.x, block.y, block.width, block.height)
-  end
-  
-  -- Отрисовка шариков
-  for i, ball in ipairs(balls) do
-    love.graphics.setColor(255, 255, 255)
-    love.graphics.circle("fill", ball.x, ball.y, ball.radius)
-  end
-  
-
-    -- Отрисовка счета
-  love.graphics.print("Score: " .. score, 10, 10 + 70)
-  love.graphics.print("Max Score: " .. highscore, 10, 30 + 70)
-  
-  -- Отрисовка кнопки перезапуска игры
-  if gameover then
-    love.graphics.print("Game Over!", love.graphics.getWidth()/2 - 70, love.graphics.getHeight()/2 - 20)
-    love.graphics.print("Press 'R', to restart", love.graphics.getWidth()/2 - 110, love.graphics.getHeight()/2)
-  end
-
-end
-
--- Перезагрузка игры
-function resetGame()
-    gameover = false
-  platform.x = love.graphics.getWidth()/2 - 50
-  balls = {
-    {
-      x = love.graphics.getWidth()/2,
-      y = love.graphics.getHeight()/2,
-      radius = 10,
-      dx = 200,
-      dy = -200
-    }
-  }
-  score = 0
 end
 
 function love.keypressed(key)
-  -- Выход из игры по нажатию клавиши Escape
-  if key == "r" then
-    resetGame()
-  end
+    if gameOver then
+        if key == "r" then
+            initializeGame()
+        end
+        return
+    end
+    
+    if key == "space" then
+        -- Проверка попадания
+        local lastBlock = blocks[#blocks]
+        if newBlock.x + newBlock.width < lastBlock.x or newBlock.x > lastBlock.x + lastBlock.width then
+            -- Игра окончена
+            gameOver = true
+        else
+            -- Обрезка блока по границам нижнего блока
+            if newBlock.x < lastBlock.x then
+                local cutBlock = {
+                    x = newBlock.x,
+                    y = newBlock.y,
+                    width = lastBlock.x - newBlock.x,
+                    height = newBlock.height
+                }
+                table.insert(fallingBlocks, cutBlock)
+                
+                newBlock.width = newBlock.width - cutBlock.width
+                newBlock.x = lastBlock.x
+            end
+            if newBlock.x + newBlock.width > lastBlock.x + lastBlock.width then
+                local cutBlock = {
+                    x = lastBlock.x + lastBlock.width,
+                    y = newBlock.y,
+                    width = newBlock.x + newBlock.width - (lastBlock.x + lastBlock.width),
+                    height = newBlock.height
+                }
+                table.insert(fallingBlocks, cutBlock)
+                
+                newBlock.width = newBlock.width - cutBlock.width
+            end
+            
+            table.insert(blocks, {x = newBlock.x, y = newBlock.y, width = newBlock.width, height = newBlock.height})
+            newBlock = {x = 0, y = newBlock.y - blockHeight, width = newBlock.width, height = blockHeight}
+            score = score + 1
+        end
+    end
+end
+
+function drawBlockWithWindows(x, y, width, height)
+    -- Рисуем блок
+    love.graphics.setColor(0.5, 0.5, 0.5)
+    love.graphics.rectangle("fill", x, y, width, height)
+
+    -- Рисуем окна
+    love.graphics.setColor(1, 1, 0)
+    local windowWidth = 10
+    local windowHeight = 15
+    local spaceBetweenWindows = 5
+    local numWindows = math.floor((width - spaceBetweenWindows) / (windowWidth + spaceBetweenWindows))
+
+    -- Центрирование окон
+    local totalWindowsWidth = numWindows * windowWidth + (numWindows - 1) * spaceBetweenWindows
+    local startX = x + (width - totalWindowsWidth) / 2
+
+    for i = 1, numWindows do
+        local windowX = startX + (i - 1) * (windowWidth + spaceBetweenWindows)
+        local windowY = y + (height - windowHeight) / 2
+        love.graphics.rectangle("fill", windowX, windowY, windowWidth, windowHeight)
+    end
+end
+
+function love.draw()
+    -- Рисуем фон (небо)
+    love.graphics.clear(skyColor)
+
+    -- Рисуем облака
+    love.graphics.setColor(1, 1, 1)
+    for _, cloud in ipairs(clouds) do
+        love.graphics.rectangle("fill", cloud.x, cloud.y, cloud.width, cloud.height)
+    end
+
+    -- Рисуем блоки с окнами
+    for _, block in ipairs(blocks) do
+        drawBlockWithWindows(block.x, block.y, block.width, block.height)
+    end
+
+    -- Рисуем падающие обрезки блоков с окнами
+    for _, block in ipairs(fallingBlocks) do
+        drawBlockWithWindows(block.x, block.y, block.width, block.height)
+    end
+
+    -- Рисуем новый блок
+    if not gameOver then
+        drawBlockWithWindows(newBlock.x, newBlock.y, newBlock.width, newBlock.height)
+    else
+        love.graphics.setColor(1, 0, 0)
+        love.graphics.print("Game Over! Press 'R' to Restart", love.graphics.getWidth() / 2 - 100, love.graphics.getHeight() / 2)
+    end
+
+    -- Рисуем счет игрока
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print("Score: " .. score, 10, 10)
 end
